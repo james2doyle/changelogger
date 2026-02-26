@@ -13,6 +13,11 @@ Changelogger is a python script that, given a list of npm package names, can tur
 - comments code and uses docblock
 - logging can be enabled with a `--verbose` flag
 
+Use the following packages:
+- https://github.com/package-url/packageurl-python
+- https://requests.readthedocs.io/en/latest/api/
+
+
 ## how it works
 
 Here are some options for finding the github repo page:

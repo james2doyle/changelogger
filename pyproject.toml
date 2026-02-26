@@ -9,6 +9,7 @@ authors = [
 ]
 dependencies = [
     "requests>=2.31.0",
+    "packageurl-python>=0.9.5",
 ]
 
 [project.urls]
