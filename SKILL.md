@@ -1,4 +1,9 @@
-# SKILL.md - Package Upgrade Workflow with Changelogger
+---
+name: changelogger
+description: Find the CHANGELOG.md for an NPM package so that you can help guide your agent through an upgrade from one version to another
+---
+
+# Package Upgrade Workflow with Changelogger
 
 This skill helps AI coding agents assist users with npm package upgrades by
 fetching and analyzing changelogs.
