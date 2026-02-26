@@ -4,9 +4,17 @@ version = "1.0.0"
 description = "Find CHANGELOG.md URLs for npm packages"
 readme = "README.md"
 requires-python = ">=3.12"
+authors = [
+    { name = "James Doyle", email = "james2doyle@gmail.com" },
+]
 dependencies = [
     "requests>=2.31.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/jamesdoyle/changelogger"
+Repository = "https://github.com/jamesdoyle/changelogger.git"
+Issues = "https://github.com/jamesdoyle/changelogger/issues"
 
 [project.scripts]
 changelogger = "changelogger:main"
