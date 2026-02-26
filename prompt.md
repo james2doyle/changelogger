@@ -64,88 +64,6 @@ You would get this url: https://github.com/sanity-io/plugins/issues
 
 As you can see, it would not give you the actual details you would need to get the changelog url given this is a nested package.
 
-**Option 4**
-
-Do a search using the Github REST API to find CHANGELOG.md file in the repo
-
-First you need the name of the repo:
-
-`npm view next-sanity --json | jq '.repository.url'`
-
-This returns: "git+ssh://git@github.com/sanity-io/next-sanity.git"
-
-To search for a CHANGELOG.md for this project would look like this:
-
-https://github.com/search.json?q=repo%3Asanity-io%2Fnext-sanity%20changelog.md&type=code
-
-The response looks like this:
-
-```json
-{
-  "payload": {
-    "header_redesign_enabled": true,
-    "results": [
-      {
-        "path": "packages/next-sanity/CHANGELOG.md",
-        "repo_id": 306368933,
-        "repo_nwo": "sanity-io/next-sanity",
-        "owner_id": 17177659,
-        "commit_sha": "3c644fb1f309b73ac614762f37bfc2a0bc08f2dd",
-        "ref_name": "refs/heads/main",
-        "blob_sha": "afa62bb9e6caef9e08a15f59796bb395ed9d284f",
-        "language_name": "Markdown",
-        "language_id": 222,
-        "has_language_id": true,
-        "language_color": "#083fa1",
-        "match_count": 1,
-        "matched_symbols": [],
-        "snippets": [
-          {
-            "lines": [
-              "…anity/client` to `v3`, see its [CHANGELOG](https://github.com/sanity-io/client/blob/main/<mark>CHANGELOG.md</mark>#300) for details."
-            ],
-            "starting_line_number": 2815,
-            "ending_line_number": 2816,
-            "jump_to_line_number": 2815,
-            "format": "SNIPPET_FORMAT_HTML",
-            "match_count": 1,
-            "score": -1.0,
-            "start": 208166,
-            "end": 208285
-          }
-        ],
-        "debug_info": {
-          "retrieval_position": 0,
-          "score": -5.260861396789551,
-          "factors": []
-        },
-        "line_number": 2815,
-        "term_matches": [
-          {
-            "start": 208255,
-            "end": 208267
-          }
-        ],
-        "duplicate_locations": [],
-        "file_size": 209042,
-        "enclosing_symbols": [],
-        "path_term_matches": [
-          {
-            "start": 21,
-            "end": 33
-          }
-        ],
-        "repo_is_public": true,
-        "repo_is_archived": false
-      }
-  ]
-}
-```
-
-You can see that the path to a CHANGELOG.md file is in 'payload.results.0.path'
-
-So the url to this file would be: https://raw.githubusercontent.com/sanity-io/next-sanity/refs/heads/main/<payload.results.0.path>
-
 # The Script
 
 Your job is to create a python script that can use these two methods to find a valid CHANGELOG.md.
@@ -159,7 +77,6 @@ The steps for this program are as follows:
 5. if it does not, option 2 is used to build the url
 6. a head request is sent to that generated url to the CHANGELOG.md to see if it exists
 7. if it does exist, repeat with option 3
-7. if it does exist, repeat with option 4
 8. if nothing is returned
 
 See @README.md for the expected API
