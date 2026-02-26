@@ -5,6 +5,9 @@ Find `CHANGELOG.md` URLs for npm packages.
 ## Installation
 
 ```bash
+# not working yet!!
+uv tool install git+https://github.com/jamesdoyle/changelogger
+# not working yet!!
 uv tool install changelogger
 ```
 
