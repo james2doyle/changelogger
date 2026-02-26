@@ -1,6 +1,10 @@
 # Changelogger
 
-Find `CHANGELOG.md` URLs for npm packages.
+> Find `CHANGELOG.md` URLs for npm packages. Helpful for agents and tools that need to gather all the changes between outdated packages. See [SKILL.md](SKILL.md) for details
+
+![demo-1.png](demo-1.png)
+
+![demo-2.png](demo-2.png)
 
 ## Installation
 
