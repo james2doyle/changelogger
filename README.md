@@ -59,6 +59,7 @@ To publish a new version of `changelogger` to PyPI:
 1. **Build the project**:
 
 This creates the source distribution and wheel in the `dist/` directory.
+
 ```bash
 uv build
 ```
@@ -66,6 +67,7 @@ uv build
 2. **Publish to PyPI**:
 
 You will need a PyPI API token.
+
 ```bash
 uv publish
 ```
