@@ -6,6 +6,8 @@
 
 ![demo-2.png](demo-2.png)
 
+![demo-3.png](demo-3.png)
+
 ## Installation
 
 ```bash
@@ -68,8 +70,9 @@ This tool uses multiple methods to find the `CHANGELOG.md` URL, trying each in o
 1. **unpkg.com** - Check if the package publishes CHANGELOG.md directly to npm
 2. **npm view bugs URL** - Extract GitHub repo from package metadata and construct raw URL
 3. **npm repo** - Use npm's repo command to get full path (handles nested monorepo packages)
+4. **GitHub compare URL** - If the package is installed locally and outdated, return a compare URL showing commits between versions
 
-For GitHub URLs, both `main` and `master` branches are tried.
+For GitHub URLs, both `main` and `master` branches are tried. For compare URLs, both tag formats (`1.0.0` and `v1.0.0`) are tried.
 
 ## Development
 

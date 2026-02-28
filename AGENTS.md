@@ -7,7 +7,8 @@ changelogger repository.
 
 Changelogger is a Python 3.12 CLI tool that finds CHANGELOG.md URLs for npm
 packages. It uses multiple methods: checking unpkg.com, parsing npm view bugs
-URLs, and using npm repo for monorepo packages.
+URLs, using npm repo for monorepo packages, and falling back to GitHub compare
+URLs for locally installed outdated packages.
 
 **Architecture**: Single-module design with `changelogger.py` (main source) and
 `test_changelogger.py` (test suite).

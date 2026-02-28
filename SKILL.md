@@ -23,7 +23,7 @@ The `changelogger` CLI tool finds CHANGELOG.md URLs for npm packages.
 The `changelogger` tool must be installed globally:
 
 ```bash
-uv tool install changelogger
+uv tool install git+https://github.com/jamesdoyle/changelogger
 ```
 
 ## Basic Usage
@@ -47,13 +47,7 @@ First, check which packages need upgrading:
 
 ```bash
 # npm
-npm outdated
-
-# yarn
-yarn outdated
-
-# pnpm
-pnpm outdated
+npm outdated <package_name> --json
 ```
 
 This shows current version, wanted version, and latest version for each package.
@@ -83,10 +77,9 @@ the current version and the target version.
 # Get the changelog URL
 changelogger next
 # Output: https://raw.githubusercontent.com/vercel/next.js/refs/heads/main/CHANGELOG.md
-
-# Fetch the changelog content
-curl -s "$(changelogger next)" | head -200
 ```
+
+Then use your fetch tools to read the content from this URL.
 
 ### Step 4: Identify Breaking Changes
 
@@ -159,6 +152,10 @@ When helping users upgrade packages:
 ## Handling Edge Cases
 
 ### Changelog Not Found
+
+If the CHANGELOG.md cannot be found, it may return a "compare" URL for GitHub. This can be used to fetch the details about the commits between two versions.
+
+The format looks like this: `<repo-url>/compare/<current-version>...<wanted-version>`.
 
 If `changelogger` outputs "CHANGELOG.md not found" to stderr:
 

@@ -8,11 +8,13 @@ import pytest
 import requests
 
 from changelogger import (
+    build_compare_url,
     build_raw_changelog_url,
     check_url_exists,
     find_changelog,
     get_github_url_from_bugs,
     get_github_url_from_repo,
+    get_outdated_versions,
     parse_github_url,
     setup_logging,
     try_unpkg,
@@ -301,6 +303,183 @@ class TestGetGithubUrlFromRepo:
             assert result is None
 
 
+class TestGetOutdatedVersions:
+    """Tests for get_outdated_versions function."""
+
+    def test_outdated_versions_found(self) -> None:
+        """Test that versions are returned when package is outdated."""
+        npm_output = json.dumps(
+            {
+                "lodash": {
+                    "current": "4.17.0",
+                    "wanted": "4.17.23",
+                    "latest": "4.17.23",
+                    "dependent": "myproject",
+                    "location": "/path/to/node_modules/lodash",
+                }
+            }
+        )
+
+        with patch("changelogger.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=1,  # npm outdated returns 1 when packages are outdated
+                stdout=npm_output,
+                stderr="",
+            )
+
+            result = get_outdated_versions("lodash")
+
+            assert result == ("4.17.0", "4.17.23")
+
+    def test_package_not_installed(self) -> None:
+        """Test that None is returned when package is not installed."""
+        with patch("changelogger.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=0,
+                stdout="{}",
+                stderr="",
+            )
+
+            result = get_outdated_versions("not-installed-package")
+
+            assert result is None
+
+    def test_package_up_to_date(self) -> None:
+        """Test that None is returned when package is up to date."""
+        with patch("changelogger.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=0,
+                stdout="",
+                stderr="",
+            )
+
+            result = get_outdated_versions("up-to-date-package")
+
+            assert result is None
+
+    def test_npm_command_fails(self) -> None:
+        """Test that None is returned when npm command fails with no output."""
+        with patch("changelogger.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=1,
+                stdout="",
+                stderr="npm ERR! code E404",
+            )
+
+            result = get_outdated_versions("nonexistent-package")
+
+            assert result is None
+
+    def test_npm_timeout(self) -> None:
+        """Test that None is returned when npm times out."""
+        with patch("changelogger.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.TimeoutExpired("npm", 30)
+
+            result = get_outdated_versions("test-package")
+
+            assert result is None
+
+    def test_npm_not_found(self) -> None:
+        """Test that None is returned when npm is not installed."""
+        with patch("changelogger.subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError("npm not found")
+
+            result = get_outdated_versions("test-package")
+
+            assert result is None
+
+    def test_json_parse_error(self) -> None:
+        """Test that None is returned when JSON parsing fails."""
+        with patch("changelogger.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=1,
+                stdout="not valid json",
+                stderr="",
+            )
+
+            result = get_outdated_versions("test-package")
+
+            assert result is None
+
+    def test_scoped_package(self) -> None:
+        """Test that scoped packages are handled correctly."""
+        npm_output = json.dumps(
+            {
+                "@angular/core": {
+                    "current": "15.0.0",
+                    "wanted": "17.0.0",
+                    "latest": "17.0.0",
+                    "dependent": "myproject",
+                    "location": "/path/to/node_modules/@angular/core",
+                }
+            }
+        )
+
+        with patch("changelogger.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=1,
+                stdout=npm_output,
+                stderr="",
+            )
+
+            result = get_outdated_versions("@angular/core")
+
+            assert result == ("15.0.0", "17.0.0")
+
+
+class TestBuildCompareUrl:
+    """Tests for build_compare_url function."""
+
+    def test_compare_url_without_v_prefix(self) -> None:
+        """Test building compare URL for repos with unpreifxed tags (e.g., lodash)."""
+        with patch("changelogger.check_url_exists") as mock_check:
+            mock_check.return_value = True
+
+            result = build_compare_url("lodash", "lodash", "4.17.0", "4.17.23")
+
+            assert result == "https://github.com/lodash/lodash/compare/4.17.0...4.17.23"
+            mock_check.assert_called_once_with(
+                "https://github.com/lodash/lodash/compare/4.17.0...4.17.23"
+            )
+
+    def test_compare_url_with_v_prefix(self) -> None:
+        """Test building compare URL for repos with v-prefixed tags (e.g., react)."""
+        with patch("changelogger.check_url_exists") as mock_check:
+            # First call (no prefix) fails, second call (v prefix) succeeds
+            mock_check.side_effect = [False, True]
+
+            result = build_compare_url("facebook", "react", "18.0.0", "19.0.0")
+
+            assert (
+                result == "https://github.com/facebook/react/compare/v18.0.0...v19.0.0"
+            )
+            assert mock_check.call_count == 2
+
+    def test_both_formats_fail(self) -> None:
+        """Test that None is returned when neither tag format exists."""
+        with patch("changelogger.check_url_exists") as mock_check:
+            mock_check.return_value = False
+
+            result = build_compare_url("owner", "repo", "1.0.0", "2.0.0")
+
+            assert result is None
+            assert mock_check.call_count == 2
+
+    def test_prefers_no_prefix(self) -> None:
+        """Test that unprefixed tags are tried first."""
+        with patch("changelogger.check_url_exists") as mock_check:
+            mock_check.return_value = True
+
+            build_compare_url("owner", "repo", "1.0.0", "2.0.0")
+
+            # First call should be without 'v' prefix
+            first_call = mock_check.call_args_list[0]
+            assert (
+                first_call[0][0]
+                == "https://github.com/owner/repo/compare/1.0.0...2.0.0"
+            )
+
+
 class TestFindChangelog:
     """Tests for find_changelog function."""
 
@@ -402,6 +581,106 @@ class TestFindChangelog:
             result = find_changelog("gitlab-package")
 
             assert result is None
+
+    def test_finds_compare_url_as_fallback(self) -> None:
+        """Test that compare URL is returned when Options 1-3 fail (Option 4)."""
+        with (
+            patch("changelogger.try_unpkg") as mock_unpkg,
+            patch("changelogger.get_github_url_from_bugs") as mock_bugs,
+            patch("changelogger.get_github_url_from_repo") as mock_repo,
+            patch("changelogger.check_url_exists") as mock_check,
+            patch("changelogger.get_outdated_versions") as mock_outdated,
+        ):
+            mock_unpkg.return_value = None
+            mock_bugs.return_value = "https://github.com/owner/repo/issues"
+            mock_repo.return_value = None
+            # First two calls for changelog URLs (main/master) fail,
+            # third call for compare URL succeeds
+            mock_check.side_effect = [False, False, True]
+            mock_outdated.return_value = ("1.0.0", "2.0.0")
+
+            result = find_changelog("test-package")
+
+            assert result == "https://github.com/owner/repo/compare/1.0.0...2.0.0"
+
+    def test_skips_compare_when_changelog_found(self) -> None:
+        """Test that Option 4 is not called when changelog is found via earlier options."""
+        with (
+            patch("changelogger.try_unpkg") as mock_unpkg,
+            patch("changelogger.get_outdated_versions") as mock_outdated,
+        ):
+            mock_unpkg.return_value = "https://unpkg.com/lodash/CHANGELOG.md"
+
+            result = find_changelog("lodash")
+
+            assert result == "https://unpkg.com/lodash/CHANGELOG.md"
+            mock_outdated.assert_not_called()
+
+    def test_compare_url_with_repo_owner_from_option3(self) -> None:
+        """Test that owner/repo from Option 3 is used for compare URL."""
+        with (
+            patch("changelogger.try_unpkg") as mock_unpkg,
+            patch("changelogger.get_github_url_from_bugs") as mock_bugs,
+            patch("changelogger.get_github_url_from_repo") as mock_repo,
+            patch("changelogger.check_url_exists") as mock_check,
+            patch("changelogger.get_outdated_versions") as mock_outdated,
+        ):
+            mock_unpkg.return_value = None
+            mock_bugs.return_value = None
+            mock_repo.return_value = (
+                "https://github.com/sanity-io/plugins/tree/HEAD/plugins/my-plugin"
+            )
+            # First two calls for changelog URLs fail, third for compare succeeds
+            mock_check.side_effect = [False, False, True]
+            mock_outdated.return_value = ("1.0.0", "2.0.0")
+
+            result = find_changelog("my-plugin")
+
+            assert (
+                result == "https://github.com/sanity-io/plugins/compare/1.0.0...2.0.0"
+            )
+
+    def test_returns_none_when_all_options_fail(self) -> None:
+        """Test that None is returned when all options including Option 4 fail."""
+        with (
+            patch("changelogger.try_unpkg") as mock_unpkg,
+            patch("changelogger.get_github_url_from_bugs") as mock_bugs,
+            patch("changelogger.get_github_url_from_repo") as mock_repo,
+            patch("changelogger.check_url_exists") as mock_check,
+            patch("changelogger.get_outdated_versions") as mock_outdated,
+        ):
+            mock_unpkg.return_value = None
+            mock_bugs.return_value = "https://github.com/owner/repo/issues"
+            mock_repo.return_value = None
+            # All changelog URL checks fail
+            mock_check.return_value = False
+            # Package is outdated but compare URL doesn't exist
+            mock_outdated.return_value = ("1.0.0", "2.0.0")
+
+            result = find_changelog("test-package")
+
+            assert result is None
+
+    def test_skips_compare_when_package_not_outdated(self) -> None:
+        """Test that compare URL is skipped when package is not outdated."""
+        with (
+            patch("changelogger.try_unpkg") as mock_unpkg,
+            patch("changelogger.get_github_url_from_bugs") as mock_bugs,
+            patch("changelogger.get_github_url_from_repo") as mock_repo,
+            patch("changelogger.check_url_exists") as mock_check,
+            patch("changelogger.get_outdated_versions") as mock_outdated,
+            patch("changelogger.build_compare_url") as mock_build_compare,
+        ):
+            mock_unpkg.return_value = None
+            mock_bugs.return_value = "https://github.com/owner/repo/issues"
+            mock_repo.return_value = None
+            mock_check.return_value = False
+            mock_outdated.return_value = None  # Package is not outdated
+
+            result = find_changelog("test-package")
+
+            assert result is None
+            mock_build_compare.assert_not_called()
 
 
 class TestMain:

@@ -6,6 +6,7 @@ This script uses multiple methods to locate CHANGELOG.md files for npm packages:
 1. Check unpkg.com directly for the CHANGELOG.md
 2. Use npm view to get the bugs URL and construct a GitHub raw URL
 3. Use npm repo to get the full repository path (handles nested packages)
+4. Use npm outdated to get version info and return a GitHub compare URL
 """
 
 import argparse
@@ -21,8 +22,10 @@ from packageurl import PackageURL
 # Constants
 UNPKG_BASE_URL = "https://unpkg.com"
 RAW_GITHUB_BASE_URL = "https://raw.githubusercontent.com"
+GITHUB_BASE_URL = "https://github.com"
 CHANGELOG_FILENAME = "CHANGELOG.md"
 DEFAULT_BRANCHES = ["main", "master"]
+TAG_PREFIXES = ["", "v"]  # Try without prefix first, then with 'v'
 REQUEST_TIMEOUT = 10
 
 # Configure module-level logger
@@ -268,6 +271,119 @@ def get_github_url_from_repo(package_name: str) -> str | None:
         return None
 
 
+def get_outdated_versions(package_name: str) -> tuple[str, str] | None:
+    """
+    Get current and latest versions for an outdated local package.
+
+    Uses `npm outdated <package_name> --json` to determine if a locally
+    installed package is outdated and returns the version information.
+
+    Args:
+        package_name: The npm package name.
+
+    Returns:
+        A tuple of (current_version, latest_version) if the package is
+        outdated, None if the package is not installed, up to date, or
+        if the npm command fails.
+    """
+    logger.debug(f"Getting outdated versions for package: {package_name}")
+
+    try:
+        result = subprocess.run(
+            ["npm", "outdated", package_name, "--json"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+
+        # npm outdated returns exit code 1 when packages are outdated
+        # and exit code 0 when all packages are up to date (empty output)
+        if result.stdout.strip() == "" or result.stdout.strip() == "{}":
+            logger.debug("Package is not installed or is up to date")
+            return None
+
+        data = json.loads(result.stdout)
+
+        # Handle both regular and scoped package names in the output
+        # The key in the JSON output is the package name without scope prefix issues
+        package_data = data.get(package_name)
+        if not package_data:
+            # Try to find the package in the output (handles edge cases)
+            for key, value in data.items():
+                if key == package_name or key.endswith(f"/{package_name}"):
+                    package_data = value
+                    break
+
+        if not package_data:
+            logger.debug(f"Package {package_name} not found in outdated output")
+            return None
+
+        current = package_data.get("current")
+        latest = package_data.get("latest")
+
+        if not current or not latest:
+            logger.debug("Missing current or latest version in output")
+            return None
+
+        if current == latest:
+            logger.debug("Package is already up to date")
+            return None
+
+        logger.debug(f"Found outdated package: {current} -> {latest}")
+        return (current, latest)
+
+    except subprocess.TimeoutExpired:
+        logger.debug("npm outdated command timed out")
+        return None
+    except json.JSONDecodeError as e:
+        logger.debug(f"Failed to parse npm outdated output: {e}")
+        return None
+    except FileNotFoundError:
+        logger.debug("npm command not found")
+        return None
+
+
+def build_compare_url(
+    owner: str,
+    repo: str,
+    current_version: str,
+    latest_version: str,
+) -> str | None:
+    """
+    Build a GitHub compare URL for two versions.
+
+    Tries both tag formats (with and without 'v' prefix) to find valid tags.
+
+    Args:
+        owner: The GitHub repository owner.
+        repo: The GitHub repository name.
+        current_version: The current installed version.
+        latest_version: The latest available version.
+
+    Returns:
+        The compare URL if valid tags are found, None otherwise.
+    """
+    logger.debug(
+        f"Building compare URL for {owner}/{repo}: {current_version}...{latest_version}"
+    )
+
+    for prefix in TAG_PREFIXES:
+        current_tag = f"{prefix}{current_version}"
+        latest_tag = f"{prefix}{latest_version}"
+        compare_url = (
+            f"{GITHUB_BASE_URL}/{owner}/{repo}/compare/{current_tag}...{latest_tag}"
+        )
+
+        logger.debug(f"Trying compare URL: {compare_url}")
+        if check_url_exists(compare_url):
+            logger.debug(f"Found valid compare URL: {compare_url}")
+            return compare_url
+
+    logger.debug("No valid compare URL found for any tag format")
+    return None
+
+
 def find_changelog(package_name: str) -> str | None:
     """
     Find the CHANGELOG.md URL for an npm package.
@@ -276,14 +392,16 @@ def find_changelog(package_name: str) -> str | None:
     1. Check unpkg.com directly
     2. Use npm view bugs URL to construct GitHub raw URL
     3. Use npm repo to get full path (handles nested packages)
+    4. Use npm outdated to get version info and return a GitHub compare URL
 
     For GitHub URLs, tries both 'main' and 'master' branches.
+    For compare URLs, tries both tag formats ('1.0.0' and 'v1.0.0').
 
     Args:
         package_name: The npm package name.
 
     Returns:
-        The URL to the CHANGELOG.md if found, None otherwise.
+        The URL to the CHANGELOG.md or compare URL if found, None otherwise.
     """
     logger.debug(f"Finding changelog for package: {package_name}")
 
@@ -293,6 +411,10 @@ def find_changelog(package_name: str) -> str | None:
         logger.debug(f"Package URL: {purl.to_string()}")
     except ValueError as e:
         logger.debug(f"Invalid package name: {e}")
+
+    # Cache owner/repo for Option 4 fallback
+    cached_owner: str | None = None
+    cached_repo: str | None = None
 
     # Option 1: Try unpkg.com
     logger.debug("Trying Option 1: unpkg.com")
@@ -306,6 +428,7 @@ def find_changelog(package_name: str) -> str | None:
     if bugs_url:
         try:
             owner, repo, _ = parse_github_url(bugs_url)
+            cached_owner, cached_repo = owner, repo
             # bugs URL doesn't have subpath info, so we try root
             for branch in DEFAULT_BRANCHES:
                 changelog_url = build_raw_changelog_url(owner, repo, branch)
@@ -320,12 +443,25 @@ def find_changelog(package_name: str) -> str | None:
     if repo_url:
         try:
             owner, repo, subpath = parse_github_url(repo_url)
+            cached_owner, cached_repo = owner, repo
             for branch in DEFAULT_BRANCHES:
                 changelog_url = build_raw_changelog_url(owner, repo, branch, subpath)
                 if check_url_exists(changelog_url):
                     return changelog_url
         except ValueError as e:
             logger.debug(f"Failed to parse repo URL: {e}")
+
+    # Option 4: Try GitHub compare URL for outdated packages
+    logger.debug("Trying Option 4: GitHub compare URL")
+    if cached_owner and cached_repo:
+        versions = get_outdated_versions(package_name)
+        if versions:
+            current_version, latest_version = versions
+            compare_url = build_compare_url(
+                cached_owner, cached_repo, current_version, latest_version
+            )
+            if compare_url:
+                return compare_url
 
     logger.debug(f"No CHANGELOG.md found for package: {package_name}")
     return None
