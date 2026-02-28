@@ -8,6 +8,14 @@
 
 ![demo-3.png](demo-3.png)
 
+## Why?
+
+This tool is slightly different from the other tools I found that do this in that:
+
+- Doesn’t require GitHub Auth
+- Works with nested packages (`/repo/packages/package-name/CHANGELOG.md`)
+- Falls back to "GitHub compare" tags URLs
+
 ## Installation
 
 ```bash
