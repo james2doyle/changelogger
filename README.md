@@ -9,10 +9,9 @@
 ## Installation
 
 ```bash
-# not working yet!!
 uv tool install git+https://github.com/jamesdoyle/changelogger
-# not working yet!!
-uv tool install changelogger
+# Or from the PIPY:
+uv tool install changelogger # not working yet!!
 ```
 
 Or build and install locally:
@@ -28,33 +27,35 @@ uv tool install .
 ## Usage
 
 ```bash
-# Run directly with Python
-uv run python changelogger.py <package_name> [package_name2 ...]
-
-# Or if installed as a tool
+# if installed as a tool
 changelogger <package_name> [package_name2 ...]
+
+# or when cloned, run directly with Python
+uv run python changelogger.py <package_name> [package_name2 ...]
 ```
 
 ### Examples
 
 ```bash
-# Single package
+# when installed globally
+changelogger next-sanity-image
+# or when cloned, run directly with Python
 uv run python changelogger.py next-sanity-image
 
 # Multiple packages
-uv run python changelogger.py next-sanity-image sanity-plugin-iframe-pane
+changelogger next-sanity-image sanity-plugin-iframe-pane
 
 # Nested package (handled automatically)
-uv run python changelogger.py sanity-plugin-iframe-pane
+changelogger sanity-plugin-iframe-pane
 
 # With verbose logging
-uv run python changelogger.py lodash --verbose
+changelogger lodash --verbose
 ```
 
 ### Example Output
 
 ```sh
-uv run python changelogger.py next-sanity-image sanity-plugin-iframe-pane
+changelogger next-sanity-image sanity-plugin-iframe-pane
 # outputs these urls
 https://raw.githubusercontent.com/lorenzodejong/next-sanity-image/refs/heads/main/CHANGELOG.md
 https://raw.githubusercontent.com/sanity-io/plugins/refs/heads/main/plugins/sanity-plugin-iframe-pane/CHANGELOG.md
@@ -119,6 +120,43 @@ The `SKILL.md` document provides a complete workflow for package upgrades:
 
 AI agents can use this tool to provide informed upgrade guidance by fetching
 and summarizing relevant changelog entries between package versions.
+
+### OpenCode Custom Command
+
+You can create a custom command in [OpenCode](https://opencode.ai/) to easily fetch and summarize changelogs without leaving your terminal.
+
+Create a file named `changelog.md` in your `~/.config/opencode/commands/` (global) or `.opencode/commands/` (project-local) directory:
+
+    ```markdown
+    ---
+    description: Find and summarize recent updates for an npm package to better help with package upgrades
+    subtask: true
+    ---
+
+    I need to know the recent changes for given npm package/packages: `$ARGUMENTS`.
+
+    First, use your bash tool to execute the `changelogger` CLI to find CHANGELOG URLs:
+
+    ```bash
+    changelogger $ARGUMENTS
+    ```
+
+    If the URL is not found, STOP and report the problem.
+
+    Then, unless clarified, get the current details about the installed versions of the target packages:
+
+    ```bash
+    npm outdated $ARGUMENTS
+    ```
+
+    Now, you can summarize the changes between the currently installed packages and the latest one.
+    ```
+
+Once saved, you can run this inside the OpenCode TUI:
+
+```bash
+/changelog lodash
+```
 
 ## License
 
