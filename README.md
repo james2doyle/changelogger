@@ -130,7 +130,6 @@ You can create a custom command in [OpenCode](https://opencode.ai/) to easily fe
 
 Create a file named `changelog.md` in your `~/.config/opencode/commands/` (global) or `.opencode/commands/` (project-local) directory:
 
-    ```markdown
     ---
     description: Find and summarize recent updates for an npm package to better help with package upgrades
     subtask: true
@@ -138,7 +137,13 @@ Create a file named `changelog.md` in your `~/.config/opencode/commands/` (globa
 
     I need to know the recent changes for given npm package/packages: `$ARGUMENTS`.
 
-    First, use your bash tool to execute the `changelogger` CLI to find CHANGELOG URLs:
+    First, gather the details about the current packages:
+
+    ```bash
+    npm outdated $ARGUMENTS --json
+    ```
+
+    Then, use your bash tool to execute the `changelogger` CLI to find CHANGELOG URLs:
 
     ```bash
     changelogger $ARGUMENTS
@@ -146,14 +151,13 @@ Create a file named `changelog.md` in your `~/.config/opencode/commands/` (globa
 
     If the URL is not found, STOP and report the problem.
 
-    Then, unless clarified, get the current details about the installed versions of the target packages:
+    Now, analyze the changelog, pay attention to:
 
-    ```bash
-    npm outdated $ARGUMENTS
-    ```
-
-    Now, you can summarize the changes between the currently installed packages and the latest one.
-    ```
+    1. **Version headers** - Look for the versions between current and target
+    2. **BREAKING CHANGE** labels - These require code modifications
+    3. **Deprecation notices** - APIs that will be removed in future versions
+    4. **Migration guides** - Step-by-step upgrade instructions
+    5. **Peer dependency changes** - May require updating related packages
 
 Once saved, you can run this inside the OpenCode TUI:
 
