@@ -6,8 +6,6 @@
 
 ![demo-2.png](demo-2.png)
 
-![demo-3.png](demo-3.png)
-
 ## Why?
 
 This tool is slightly different from the other tools I found that do this in that:
@@ -46,6 +44,8 @@ uv run python changelogger.py <package_name> [package_name2 ...]
 
 ### Examples
 
+Use getting the URL:
+
 ```bash
 # when installed globally
 changelogger next-sanity-image
@@ -60,6 +60,21 @@ changelogger sanity-plugin-iframe-pane
 
 # With verbose logging
 changelogger lodash --verbose
+```
+
+Running in an agent without the skill:
+
+```
+! npm outdated @biomejs/biome --json
+! changelogger @biomejs/biome
+> Fetch the changelog from the URL and use that to determine the upgrade from the current version to the latest one
+```
+
+Via the skill:
+
+```bash
+curl -O "https://raw.githubusercontent.com/james2doyle/changelogger/refs/heads/main/SKILL.md" ~/place-for-the-skill/SKILL.md
+/smart-package-upgrade
 ```
 
 ### Example Output
