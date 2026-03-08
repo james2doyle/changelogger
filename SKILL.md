@@ -22,6 +22,8 @@ steps.
 ## Usage
 
 ```bash
+# find the current version of the package
+npm outdated <package_name> --json
 # Get changelog URL for a single package
 changelogger <package_name>
 
