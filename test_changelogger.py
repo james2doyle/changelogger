@@ -682,6 +682,50 @@ class TestFindChangelog:
             assert result is None
             mock_build_compare.assert_not_called()
 
+    def test_skips_bugs_url_for_scoped_packages(self) -> None:
+        """Test that Option 2 (bugs URL) is skipped for scoped packages."""
+        with (
+            patch("changelogger.try_unpkg") as mock_unpkg,
+            patch("changelogger.get_github_url_from_bugs") as mock_bugs,
+            patch("changelogger.get_github_url_from_repo") as mock_repo,
+            patch("changelogger.check_url_exists") as mock_check,
+        ):
+            mock_unpkg.return_value = None
+            mock_bugs.return_value = None  # Should not be called for scoped packages
+            mock_repo.return_value = (
+                "https://github.com/biomejs/biome/tree/HEAD/packages/@biomejs/biome"
+            )
+            mock_check.return_value = True
+
+            result = find_changelog("@biomejs/biome")
+
+            expected = (
+                "https://raw.githubusercontent.com/biomejs/biome/refs/heads/main/"
+                "packages/@biomejs/biome/CHANGELOG.md"
+            )
+            assert result == expected
+            mock_bugs.assert_not_called()
+            mock_repo.assert_called_once_with("@biomejs/biome")
+
+    def test_uses_bugs_url_for_non_scoped_packages(self) -> None:
+        """Test that Option 2 (bugs URL) is used for non-scoped packages."""
+        with (
+            patch("changelogger.try_unpkg") as mock_unpkg,
+            patch("changelogger.get_github_url_from_bugs") as mock_bugs,
+            patch("changelogger.check_url_exists") as mock_check,
+        ):
+            mock_unpkg.return_value = None
+            mock_bugs.return_value = "https://github.com/owner/repo/issues"
+            mock_check.return_value = True
+
+            result = find_changelog("lodash")
+
+            assert (
+                result
+                == "https://raw.githubusercontent.com/owner/repo/refs/heads/main/CHANGELOG.md"
+            )
+            mock_bugs.assert_called_once_with("lodash")
+
 
 class TestMain:
     """Tests for main function."""

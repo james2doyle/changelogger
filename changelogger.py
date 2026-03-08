@@ -423,8 +423,14 @@ def find_changelog(package_name: str) -> str | None:
         return unpkg_url
 
     # Option 2: Try npm view bugs URL
+    # Skip for scoped packages (@scope/name) as they're often in monorepos
+    # where the bugs URL points to the root repo without subpath info
     logger.debug("Trying Option 2: npm view bugs URL")
-    bugs_url = get_github_url_from_bugs(package_name)
+    if package_name.startswith("@"):
+        logger.debug("Skipping Option 2 for scoped package (monorepo likely)")
+        bugs_url = None
+    else:
+        bugs_url = get_github_url_from_bugs(package_name)
     if bugs_url:
         try:
             owner, repo, _ = parse_github_url(bugs_url)
