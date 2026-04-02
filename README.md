@@ -62,19 +62,21 @@ changelogger sanity-plugin-iframe-pane
 changelogger lodash --verbose
 ```
 
+Via the skill:
+
+```bash
+# save the skill file in the global skills folder
+curl -O "https://raw.githubusercontent.com/james2doyle/changelogger/refs/heads/main/SKILL.md" "$HOME/.agents/skills/smart-package-upgrade/SKILL.md"
+# then in your agent:
+/smart-package-upgrade
+```
+
 Running in an agent without the skill:
 
 ```
 ! npm outdated @biomejs/biome --json
 ! changelogger @biomejs/biome
 > Fetch the changelog from the URL and use that to determine the upgrade from the current version to the latest one
-```
-
-Via the skill:
-
-```bash
-curl -O "https://raw.githubusercontent.com/james2doyle/changelogger/refs/heads/main/SKILL.md" ~/place-for-the-skill/SKILL.md
-/smart-package-upgrade
 ```
 
 ### Example Output

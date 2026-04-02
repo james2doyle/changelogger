@@ -3,21 +3,25 @@ name: smart-package-upgrade
 description: Find the CHANGELOG.md for an NPM package so that you can help guide your agent through an upgrade from one version to another
 ---
 
-# Changelogger Skill
+# Smart Package Upgrade Skill
 
 This skill helps AI coding agents assist users with npm package upgrades by
 fetching and analyzing changelogs. Use it when a user wants to upgrade a
 package and needs to understand breaking changes, deprecations, or migration
 steps.
 
+> !WARNING
+> This project may be a monorepo (sub-folders that contain the target `package.json`) so be aware of that if you notice that there is no `package.json` in the working directory
+
 ## Workflow
 
-1. Run `npm outdated <package_name> --json` to get current, wanted, and latest versions
-2. Run `changelogger <package_name>` to get the changelog URL
-3. **If the `changelogger` command fails (command not found), STOP and ask the user how to proceed**
-4. Fetch the returned URL to get changelog content
-5. Analyze the changelog for changes between current and target versions
-6. Provide upgrade guidance to the user
+1. Ask for a package name that the user would like to upgrade
+2. Run `npm outdated <package_name> --json` to get current, wanted, and latest versions
+3. Run `changelogger <package_name>` to get the changelog URL
+4. **If the `changelogger` command fails (command not found), STOP and ask the user how to proceed**
+5. Fetch the returned URL to get changelog content
+6. Analyze the changelog for changes between current and target versions
+7. Provide upgrade guidance to the user
 
 ## Usage
 
